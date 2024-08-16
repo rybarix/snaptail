@@ -6,9 +6,14 @@
   "bin": {
     "wiresnap": "./run.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "react",
+    "vite",
+    "single file",
+    "web app"
+  ],
+  "author": "Sandro Rybarik",
+  "license": "MIT",
   "dependencies": {
     "bcryptjs": "^2.4.3"
   },
@@ -16,5 +21,9 @@
     "@types/node": "^22.3.0",
     "create-vite": "^5.5.1",
     "vite": "^5.4.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rybarix/wiresnap"
   }
 }
