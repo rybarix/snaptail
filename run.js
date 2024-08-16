@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import fs from "node:fs/promises";
 import fss from "node:fs";
 // import path from "node:path";
@@ -23,11 +25,11 @@ const setupReactProject = async () => {
 };
 
 const renameDirectory = async () => {
-  await fs.rename("sfa", ".sfa");
+  await fs.rename("sfa", ".wiresnap");
 };
 
 const installDependencies = async () => {
-  await runAsync("npm", ["--prefix", fromHere(".sfa"), "install"]);
+  await runAsync("npm", ["--prefix", fromHere(".wiresnap"), "install"]);
 };
 
 /**
@@ -61,7 +63,7 @@ const MAIN_FILE_TEMPLATE = [
 const setupTailwind = async () => {
   await runAsync("npm", [
     "--prefix",
-    fromHere(".sfa"),
+    fromHere(".wiresnap"),
     "install",
     "-D",
     "tailwindcss",
@@ -95,16 +97,24 @@ const setupTailwind = async () => {
   ].join("\n");
 
   await Promise.allSettled([
-    fs.writeFile(fromHere(".sfa", "tailwind.config.js"), twConfig, "utf-8"),
-    fs.writeFile(fromHere(".sfa", "postcss.config.js"), postConfig, "utf-8"),
-    fs.writeFile(fromHere(".sfa", "src", "index.css"), twCss, "utf-8"),
+    fs.writeFile(
+      fromHere(".wiresnap", "tailwind.config.js"),
+      twConfig,
+      "utf-8"
+    ),
+    fs.writeFile(
+      fromHere(".wiresnap", "postcss.config.js"),
+      postConfig,
+      "utf-8"
+    ),
+    fs.writeFile(fromHere(".wiresnap", "src", "index.css"), twCss, "utf-8"),
   ]);
 };
 
 const setupMantine = async () => {
   await runAsync("npm", [
     "--prefix",
-    fromHere(".sfa"),
+    fromHere(".wiresnap"),
     "install",
     "-D",
     "postcss",
@@ -122,7 +132,7 @@ const setupMantine = async () => {
 
   await runAsync("npm", [
     "--prefix",
-    fromHere(".sfa"),
+    fromHere(".wiresnap"),
     "install",
     "@mantine/core",
     "@mantine/hooks",
@@ -182,15 +192,19 @@ const setupMantine = async () => {
     ")",
   ].join("\n");
 
-  // await fs.rm(fromHere(".sfa", "src", "main.jsx"));
+  // await fs.rm(fromHere(".wiresnap", "src", "main.jsx"));
   await Promise.allSettled([
-    fs.writeFile(fromHere(".sfa", "postcss.config.js"), postConfig, "utf-8"),
+    fs.writeFile(
+      fromHere(".wiresnap", "postcss.config.js"),
+      postConfig,
+      "utf-8"
+    ),
     await fs.writeFile(
-      fromHere(".sfa", "src", "main.jsx"),
+      fromHere(".wiresnap", "src", "main.jsx"),
       MAIN_FILE_TEMPLATE_MANTINE,
       "utf-8"
     ),
-    fs.writeFile(fromHere(".sfa", "src", "index.css"), twCss, "utf-8"),
+    fs.writeFile(fromHere(".wiresnap", "src", "index.css"), twCss, "utf-8"),
   ]);
 };
 
@@ -215,7 +229,7 @@ export const prepareAuthTemplate = async ({ filePath, password, destPath }) => {
 const setupNetlifyEdgeAuthFunctions = async () => {
   await runAsync("npm", [
     "--prefix",
-    ".sfa",
+    ".wiresnap",
     "install",
     "netlify-edge-functions",
   ]);
@@ -226,17 +240,17 @@ const setupNetlifyEdgeAuthFunctions = async () => {
  * @param {string} userFile - The path to the user's single react file
  */
 const main = async (userFile) => {
-  // Detect if project is already set-up by checking if .sfa dir is created
-  if (!fss.existsSync(fromHere(".sfa"))) {
+  // Detect if project is already set-up by checking if .wiresnap dir is created
+  if (!fss.existsSync(fromHere(".wiresnap"))) {
     console.info("Setting up the project");
     // Remove unnecessary files
     await setupReactProject(); // create sfa dir vite react project
-    await renameDirectory(); // sfa dir to .sfa
+    await renameDirectory(); // sfa dir to .wiresnap
 
     await Promise.allSettled([
-      fs.rm(fromHere(".sfa", "src", "App.jsx")),
-      fs.rm(fromHere(".sfa", "src", "App.css")),
-      fs.rm(fromHere(".sfa", "src", "index.css")),
+      fs.rm(fromHere(".wiresnap", "src", "App.jsx")),
+      fs.rm(fromHere(".wiresnap", "src", "App.css")),
+      fs.rm(fromHere(".wiresnap", "src", "index.css")),
     ]);
 
     // This should be optional
@@ -248,29 +262,29 @@ const main = async (userFile) => {
   }
 
   // Inject `MAIN_FILE_TEMPLATE` as file that will just import the user's single react file
-  if (false) {
-    await fs.writeFile(
-      fromHere(".sfa", "src", "main.jsx"),
-      MAIN_FILE_TEMPLATE,
-      "utf-8"
-    );
-  }
+  /*
+  await fs.writeFile(
+    fromHere(".wiresnap", "src", "main.jsx"),
+    MAIN_FILE_TEMPLATE,
+    "utf-8"
+  );
+  */
 
-  // copy the user's single react file and add it to the .sfa/src/user.jsx
-  await fs.cp(userFile, ".sfa/src/user.jsx");
+  // copy the user's single react file and add it to the .wiresnap/src/user.jsx
+  await fs.cp(userFile, ".wiresnap/src/user.jsx");
 
   console.info("Detecting dependencies");
   const dependencies = await getDependencies(userFile);
 
   console.info(`Installing detected dependencies`);
-  await runAsync("npm", ["--prefix", ".sfa", "install", ...dependencies]);
+  await runAsync("npm", ["--prefix", ".wiresnap", "install", ...dependencies]);
 
   console.info("Setting up fastify");
   await setupFastify();
   console.info("Setting up api");
-  await copyApiToFile(userFile, ".sfa/user_api.js");
+  await copyApiToFile(userFile, ".wiresnap/user_api.js");
 
-  // Setup a file watcher and copy new version into the .sfa dir
+  // Setup a file watcher and copy new version into the .wiresnap dir
   console.info("Watching for changes");
   const watcher = fss.watch(
     userFile,
@@ -278,14 +292,14 @@ const main = async (userFile) => {
     async (eventType, filename) => {
       if (eventType === "change") {
         console.info(
-          `${filename} has been modified. Updating .sfa/src/user.jsx`
+          `${filename} has been modified. Updating .wiresnap/src/user.jsx`
         );
         try {
-          await fs.cp(userFile, ".sfa/src/user.jsx", { force: true });
-          await copyApiToFile(userFile, ".sfa/user_api.js");
-          console.info("Successfully updated .sfa/src/user.jsx");
+          await fs.cp(userFile, ".wiresnap/src/user.jsx", { force: true });
+          await copyApiToFile(userFile, ".wiresnap/user_api.js");
+          console.info("Successfully updated .wiresnap/src/user.jsx");
         } catch (error) {
-          console.error("Error updating .sfa/src/user.jsx:", error);
+          console.error("Error updating .wiresnap/src/user.jsx:", error);
         }
       }
     }
@@ -299,15 +313,20 @@ const main = async (userFile) => {
 
   // Run the dev project
   /* If fastify is used, then use the fastifydev script
-  await runAsync("npm", ["--prefix", ".sfa", "run", "dev"], {
+  await runAsync("npm", ["--prefix", ".wiresnap", "run", "dev"], {
     stdio: "inherit",
   });
   */
 
   console.info("Fastify server is running...");
-  await runAsync("npm", ["--prefix", ".sfa", "run", "fastifydev"], {
+  await runAsync("npm", ["--prefix", ".wiresnap", "run", "fastifydev"], {
     stdio: "inherit",
   });
 };
 
-main(process.argv[2]);
+if (process.argv.length < 3) {
+  console.error("Usage: wiresnap <path-to-jsx-file>");
+  process.exit(1);
+} else {
+  main(process.argv[2]);
+}

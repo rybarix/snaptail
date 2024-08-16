@@ -6,7 +6,7 @@ import { fromHere, runAsync } from "./lib.js";
  * Scafold fastify project with javascript
  */
 export const setupFastify = async () => {
-  const backendDir = fromHere(".sfa");
+  const backendDir = fromHere(".wiresnap");
   // create dir for backend
   await fs.mkdir(backendDir, { recursive: true });
   /*await runAsync("npm", ["init", "-y"], {

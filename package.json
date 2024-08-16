@@ -1,20 +1,19 @@
 {
-  "name": "sfa_v2",
-  "version": "1.0.0",
-  "description": "",
-  "main": "run.js",
+  "name": "wiresnap",
+  "version": "0.0.1",
+  "description": "Run single file application in an instant.",
   "type": "module",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "bin": {
+    "wiresnap": "./run.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@types/node": "^22.3.0",
     "bcryptjs": "^2.4.3"
   },
   "devDependencies": {
+    "@types/node": "^22.3.0",
     "create-vite": "^5.5.1",
     "vite": "^5.4.0"
   }
