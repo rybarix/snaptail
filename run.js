@@ -2,16 +2,16 @@
 
 import fs from "node:fs/promises";
 import fss from "node:fs";
-// import path from "node:path";
-// import { fileURLToPath } from "node:url";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 // import { spawn } from "node:child_process";
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import { fromHere, runAsync, copyApiToFile } from "./lib.js";
 import { setupFastify } from "./backend.js";
 
-// const __filename = fileURLToPath(import.meta.url);
-// const __dirname = path.dirname(__filename);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const setupReactProject = async () => {
   await runAsync("npm", [
@@ -324,7 +324,16 @@ const main = async (userFile) => {
   });
 };
 
-if (process.argv.length < 3) {
+if (process.argv.length === 3 && process.argv[2] === "init") {
+  fs.copyFile(fromHere(__dirname, "templates", "starter.jsx"), "wiresnap.jsx")
+    .then(() => {
+      console.info("wiresnap.jsx has been created");
+      console.info("Usage: wiresnap wirensap.jsx");
+    })
+    .finally(() => {
+      process.exit(0);
+    });
+} else if (process.argv.length < 3) {
   console.error("Usage: wiresnap <path-to-jsx-file>");
   process.exit(1);
 } else {

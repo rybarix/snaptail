@@ -2,6 +2,8 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import { fromHere, runAsync } from "./lib.js";
 
+import { __dirname } from "./lib.js";
+
 /**
  * Scafold fastify project with javascript
  */
@@ -21,7 +23,7 @@ export const setupFastify = async () => {
 
   // setup fastify
   await fs.copyFile(
-    fromHere("templates/fastify.js"),
+    fromHere(__dirname, "templates/fastify.js"),
     path.join(backendDir, "app.js")
   );
 
@@ -34,7 +36,7 @@ export const setupFastify = async () => {
   );
 
   await fs.copyFile(
-    fromHere("templates/fastify-vite.config.js"),
+    fromHere(__dirname, "templates/fastify-vite.config.js"),
     path.join(backendDir, "vite.config.js")
   );
 };

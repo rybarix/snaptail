@@ -1,6 +1,6 @@
 {
   "name": "wiresnap",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "Run single file application in an instant.",
   "type": "module",
   "bin": {
