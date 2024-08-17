@@ -1,0 +1,9 @@
+// Just to please VSCode to provide intellisense for imports
+{
+    "compilerOptions": {
+     "esModuleInterop": true,
+      "jsx": "react-jsx",
+      "baseUrl": ".snaptail/node_modules", // Base directory for resolving non-relative module names
+      "typeRoots": ["./.snaptail/node_modules/@types"],
+    }
+}
