@@ -2,6 +2,7 @@ import fs from "fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
+import { transform } from "detype";
 
 export const __filename = fileURLToPath(import.meta.url);
 export const __dirname = path.dirname(__filename);
@@ -22,19 +23,28 @@ export const runAsync = (command, args, spawnArgs = undefined) => {
 
 /**
  * @param {string} sourceFile
+ * @param {string} imports raw javascript import statements
  * @param {string} targetFile
  */
-export async function copyApiToFile(sourceFile, targetFile) {
+export async function copyApiToFile(sourceFile, imports, targetFile) {
   try {
     const content = await fs.readFile(sourceFile, "utf-8");
+
     const apiRegex = /export const api = \[[\s\S]*?\];/;
     const match = content.match(apiRegex);
 
     if (match) {
-      await fs.writeFile(targetFile, match[0]);
+      const toWrite = [imports, "", match[0]].join("\n");
+      const transformedCode = await transform(toWrite, sourceFile);
+
+      await fs.writeFile(targetFile, transformedCode, {
+        encoding: "utf8",
+        flag: "w",
+      });
+
       console.log(`Successfully copied api to ${targetFile}`);
     } else {
-      console.error("Could not find api export in the source file");
+      await fs.writeFile(targetFile, `export const api = [];`);
     }
   } catch (error) {
     console.error("Error:", error);
@@ -42,54 +52,29 @@ export async function copyApiToFile(sourceFile, targetFile) {
 }
 
 /**
- * Generate nextjs directory structure for api routes from a json object where
- * path is provided, handler function is provided and method is also provided.
- * Make sure that file generation supports URL parameters and dynamic routes.
- * 
- * @param {Object[]} routes - Array of route objects
- * @param {string} routes[].path - API route path
- * @param {Function} routes[].handler - Route handler function
- * @param {string} routes[].method - HTTP method (GET, POST, etc.)
- * @param {string} baseDir - Base directory for API routes
+ * @param {string} filePath
+ * @returns {Promise<string>}
  */
-export async function generateNextApiRoutes(routes, baseDir) {
-  for (const route of routes) {
-    const { path: pathString, handler, method } = route;
-    const segments = pathString.split("/").filter((segment) => segment);
-    let currentDir = baseDir;
+export const getAllImportsRawFromFile = async (filePath) => {
+  const content = await fs.readFile(filePath, "utf-8");
+  const importRegex =
+    /import\s+(?:type\s+)?(?:(?:\w+(?:\s*,\s*\{\s*[\w\s,]+\})?|\{\s*[\w\s,]+\})|\*\s+as\s+\w+)\s+from\s+['"]([^'"]+)['"]/g;
+  const matches = [...content.matchAll(importRegex)];
 
-    // Create directories for each segment
-    for (let i = 0; i < segments.length - 1; i++) {
-      const segment = segments[i];
-      const isParameter = segment.startsWith(":");
-      const dirName = isParameter ? `[${segment.slice(1)}]` : segment;
-      currentDir = path.join(currentDir, dirName);
-      await fs.mkdir(currentDir, { recursive: true });
-    }
+  return matches.map((match) => match[0]).join(";\n");
+};
 
-    // Create the file for the last segment
-    const lastSegment = segments[segments.length - 1];
-    const isParameter = lastSegment.startsWith(":");
-    const fileName = isParameter
-      ? `[${lastSegment.slice(1)}].js`
-      : `${lastSegment}.js`;
-    const filePath = path.join(currentDir, fileName);
-
-    // Generate the content for the API route file
-    const fileContent = `
-export default function handler(req, res) {
-  const { method } = req;
-
-  if (method === '${method.toUpperCase()}') {
-    return (${handler.toString()})(req, res);
-  }
-
-  res.setHeader('Allow', ['${method.toUpperCase()}']);
-  res.status(405).end(\`Method \${method} Not Allowed\`);
-}
-`;
-
-    await fs.writeFile(filePath, fileContent.trim());
-    console.log(`Generated API route: ${filePath}`);
-  }
-}
+/**
+ * Check what dependencies are needed from the user's single react file
+ * Parse the user's single react file and get the dependencies
+ * @param {string} filePath js source file path
+ * @returns {Promise<string[]>}
+ */
+export const getDependencies = async (filePath) => {
+  const content = await fs.readFile(filePath, "utf-8");
+  const importRegex =
+    /import\s+(?:(?:\w+(?:\s*,\s*\{\s*[\w\s,]+\})?|\{\s*[\w\s,]+\})|\*\s+as\s+\w+)\s+from\s+['"]([^'"]+)['"]/g;
+  const matches = [...content.matchAll(importRegex)];
+  const dependencies = new Set(matches.map((match) => match[1]));
+  return Array.from(dependencies).filter((dep) => !dep.startsWith("."));
+};

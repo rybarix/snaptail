@@ -3,28 +3,27 @@
 import fs from "node:fs/promises";
 import fss from "node:fs";
 import path from "node:path";
-import { fileURLToPath, URL } from "node:url";
-// import { spawn } from "node:child_process";
-import bcrypt from "bcryptjs";
-import crypto from "node:crypto";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
-  fromHere,
   runAsync,
   copyApiToFile,
-  generateNextApiRoutes,
+  getAllImportsRawFromFile,
+  getDependencies,
 } from "./lib.js";
-import { setupFastify } from "./backend.js";
+import chokidar from "chokidar";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const createNextApp = async () => {
   try {
-    const projectName = "init_snaptail"; // You can change this to your desired project name
+    const postfix = Number(new Date()).toString();
+    const projectName = "snaptail_" + postfix;
 
     await runAsync(
       "npx",
       [
+        "--yes",
         "create-next-app@latest",
         projectName,
         "--typescript",
@@ -56,60 +55,120 @@ const createNextApp = async () => {
 };
 
 /**
- * Check what dependencies are needed from the user's single react file
- * Parse the user's single react file and get the dependencies
- * @param {string} filePath js source file path
- * @returns {Promise<string[]>}
+ * Generate nextjs directory structure for api routes from a json object where
+ * path is provided, handler function is provided and method is also provided.
+ * Make sure that file generation supports URL parameters and dynamic routes.
+ *
+ * @param {Object[]} routes - Array of route objects
+ * @param {string} routes[].path - API route path
+ * @param {Function} routes[].handler - Route handler function
+ * @param {string} routes[].method - HTTP method (GET, POST, etc.)
+ * @param {string} baseDir - Base directory for API routes
  */
-const getDependencies = async (filePath) => {
-  const content = await fs.readFile(filePath, "utf-8");
-  const importRegex =
-    /import\s+(?:(?:\w+(?:\s*,\s*\{\s*[\w\s,]+\})?|\{\s*[\w\s,]+\})|\*\s+as\s+\w+)\s+from\s+['"]([^'"]+)['"]/g;
-  const matches = [...content.matchAll(importRegex)];
-  const dependencies = new Set(matches.map((match) => match[1]));
-  return Array.from(dependencies).filter((dep) => !dep.startsWith("."));
+export async function generateNextApiRoutes(routes, baseDir) {
+  for (const route of routes) {
+    const { path: pathString, handler, method } = route;
+    const segments = pathString.split("/").filter((segment) => segment);
+    let currentDir = baseDir;
+
+    // Create directories for each segment
+    for (let i = 0; i < segments.length - 1; i++) {
+      const segment = segments[i];
+      const isParameter = segment.startsWith(":");
+      const dirName = isParameter ? `[${segment.slice(1)}]` : segment;
+      currentDir = path.join(currentDir, dirName);
+      await fs.mkdir(currentDir, { recursive: true });
+    }
+
+    // Create the file for the last segment
+    const lastSegment = segments[segments.length - 1];
+    const isParameter = lastSegment.startsWith(":");
+    const fileName = isParameter
+      ? `[${lastSegment.slice(1)}].js`
+      : `${lastSegment}.js`;
+    const filePath = path.join(currentDir, fileName);
+
+    // Generate the content for the API route file
+    const fileContent = `
+  export default function handler(req, res) {
+    const { method } = req;
+
+    if (method === '${method.toUpperCase()}') {
+      return (${handler.toString()})(req, res);
+    }
+
+    res.setHeader('Allow', ['${method.toUpperCase()}']);
+    res.status(405).end(\`Method \${method} Not Allowed\`);
+  }
+  `;
+
+    await fs.writeFile(filePath, fileContent.trim());
+    console.log(`Generated API route: ${filePath}`);
+  }
+}
+
+/**
+ * Generates next routes by dynamically importing extracted mjs api file.
+ */
+const generateApiFiles = async () => {
+  // There's hack used to always import the newest file and avoid hitting cache https://github.com/nodejs/help/issues/2751
+  const importPath =
+    pathToFileURL(path.join(".snaptail", `user_api.mjs`)) +
+    `?version=${Number(new Date())}`;
+
+  const { api: userApiConf } = await import(importPath);
+
+  await generateNextApiRoutes(
+    userApiConf,
+    path.join(".snaptail", "src", "pages")
+  );
+};
+
+const setupBasicFiles = async () => {
+  await Promise.allSettled([
+    fs.copyFile(
+      path.join(__dirname, "templates", "next", "page.tsx"),
+      path.join(".snaptail", "src", "app", "page.tsx")
+    ),
+    fs.copyFile(
+      path.join(__dirname, "templates", "next", "globals.css"),
+      path.join(".snaptail", "src", "app", "globals.css")
+    ),
+    fs.copyFile(
+      path.join(__dirname, "templates", "next", "index.css"),
+      path.join(".snaptail", "src", "app", "index.css")
+    ),
+  ]);
 };
 
 /**
  * Setup's the single file app from single react file
  * @param {string} userFile - The path to the user's single react file
  */
-const main = async (userFile) => {
+export const main = async (userFile) => {
+  const fileExt = userFile.split(".").pop() === "tsx" ? "tsx" : "jsx";
+  const isTs = fileExt === "tsx";
+
   // Detect if project is already set-up by checking if .wiresnap dir is created
-  if (!fss.existsSync(fromHere(".snaptail"))) {
+  if (!fss.existsSync(path.join(".snaptail"))) {
     console.info("Setting up the project");
     // Remove unnecessary files
     await createNextApp(); // create .snaptail dir nextjs project
-    // await renameDirectory(); // sfa dir to .snaptail
   }
-  await Promise.allSettled([
-    fs.copyFile(
-      fromHere(__dirname, "templates", "next", "page.tsx"),
-      fromHere(".snaptail", "src", "app", "page.tsx")
-    ),
-    fs.copyFile(
-      fromHere(__dirname, "templates", "next", "globals.css"),
-      fromHere(".snaptail", "src", "app", "globals.css")
-    ),
-    fs.copyFile(
-      fromHere(__dirname, "templates", "next", "index.css"),
-      fromHere(".snaptail", "src", "app", "index.css")
-    ),
-  ]);
 
-  const fileExt = userFile.split(".").pop() === "tsx" ? "tsx" : "jsx";
+  await setupBasicFiles();
 
-  if (fileExt === "tsx") {
+  if (isTs) {
     await fs.copyFile(
-      fromHere(__dirname, "templates", "next", "tsconfig.json"),
-      fromHere(".", "tsconfig.json")
+      path.join(__dirname, "templates", "next", "tsconfig.json"),
+      path.join(".", "tsconfig.json")
     );
   }
 
   // copy the user's single react file and add it to the
   await fs.cp(
     userFile,
-    fromHere(".snaptail", "src", "app", "user", `app.${fileExt}`)
+    path.join(".snaptail", "src", "app", "user", `app.${fileExt}`)
   );
 
   console.info("Detecting dependencies");
@@ -127,63 +186,61 @@ const main = async (userFile) => {
   ]);
 
   console.info("Setting up api");
-  await copyApiToFile(userFile, path.join(".snaptail", "user_api.mjs"));
+
+  const imports = await getAllImportsRawFromFile(userFile);
+  await copyApiToFile(
+    userFile,
+    imports,
+    path.join(".snaptail", "user_api.mjs")
+  );
 
   if (!fss.existsSync(path.join(".snaptail", "src", "pages", "api"))) {
     await fs.mkdir(path.join(".snaptail", "src", "pages", "api"), {
       recursive: true,
     });
   }
-  const { api: userApiConf } = await import(
-    // Change path to URL so we can import it
-    new URL(path.join("./", "./.snaptail", "user_api.mjs"), import.meta.url)
-      .pathname
-  );
-  await generateNextApiRoutes(
-    userApiConf,
-    path.join(".snaptail", "src", "pages")
-  );
 
-  // Setup a file watcher and copy new version into the .wiresnap dir
-  console.info("Watching for changes");
-  const watcher = fss.watch(
-    userFile,
-    { persistent: true },
-    async (eventType, filename) => {
-      if (eventType === "change") {
-        console.info(
-          `${filename} has been modified. Updating .snaptail/src/app/app.${fileExt}`
+  await generateApiFiles();
+
+  if (fss.existsSync(path.join(".env"))) {
+    fs.copyFile(".env", path.join(".snaptail", ".env"));
+  }
+
+  const watcher = chokidar
+    .watch([".env", userFile])
+    .on("change", async (filePath) => {
+      try {
+        // maybe change to .tsx, we will see
+        await fs.cp(
+          userFile,
+          path.join(".snaptail", "src", "app", "user", `app.${fileExt}`),
+          { force: true }
         );
-        try {
-          // maybe change to .tsx, we will see
-          await fs.cp(
-            userFile,
-            fromHere(".snaptail", "src", "app", "user", `app.${fileExt}`),
-            { force: true }
-          );
 
-          console.info("Updating api routes");
-          await copyApiToFile(userFile, path.join(".snaptail", "user_api.js"));
-          const { api: userApiConfRefresh } = await import(
-            // Change path to URL so we can import it
-            new URL(path.join(".snaptail", "user_api.mjs"), import.meta.url)
-              .pathname
-          );
-          await generateNextApiRoutes(
-            userApiConfRefresh,
-            path.join(".snaptail", "src", "pages")
-          );
-        } catch (error) {
-          console.error("Error updating .snaptail/src/user.jsx:", error);
+        console.info("Updating api routes");
+
+        const imports = await getAllImportsRawFromFile(userFile);
+
+        await copyApiToFile(
+          userFile,
+          imports,
+          path.join(".snaptail", "user_api.mjs")
+        );
+
+        await generateApiFiles();
+
+        if (filePath.includes(".env")) {
+          await fs.copyFile(".env", path.join(".snaptail", ".env"), {
+            force: true,
+          });
         }
+      } catch (error) {
+        console.error("Error updating .snaptail/src/user.jsx:", error);
       }
-    }
-  );
+    });
 
-  // Ensure the watcher is closed when the process exits
   process.on("SIGINT", () => {
     watcher.close();
-    process.exit(0);
   });
 
   // Run the dev project
@@ -192,21 +249,40 @@ const main = async (userFile) => {
   });
 };
 
-if (process.argv.length === 3 && process.argv[2] === "init") {
-  fs.copyFile(
-    fromHere(__dirname, "templates", "next", "starter.tsx"),
-    "myapp.tsx"
-  )
-    .then(() => {
-      console.info("myapp.tsx has been created");
-      console.info("Usage: snaptail myapp.tsx");
-    })
-    .finally(() => {
+export const initCmd = async () => {
+  await Promise.allSettled([
+    fs.copyFile(
+      path.join(__dirname, "templates", "next", "starter.tsx"),
+      "myapp.tsx"
+    ),
+    fs.copyFile(
+      path.join(__dirname, "templates", "next", "tsconfig.json"),
+      "tsconfig.json"
+    ),
+  ]);
+
+  console.info("starter.tsx ..... has been created");
+  console.info("tsconfig.json ... has been created");
+  console.info("run $ snaptail starter.tsx");
+};
+
+export const cli = async () => {
+  if (process.argv.length === 3 && process.argv[2] === "init") {
+    try {
+      await initCmd();
+      process.exit(0);
+    } catch {
+      process.exit(1);
+    }
+  } else if (process.argv.length < 3) {
+    console.error("Usage: snaptail init|<path-to-jsx-file>");
+    process.exit(1);
+  } else {
+    // Ensure the watcher is closed when the process exits
+    process.on("SIGINT", () => {
       process.exit(0);
     });
-} else if (process.argv.length < 3) {
-  console.error("Usage: snaptail init|<path-to-jsx-file>");
-  process.exit(1);
-} else {
-  main(process.argv[2]);
-}
+
+    main(process.argv[2]);
+  }
+};

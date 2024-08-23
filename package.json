@@ -1,10 +1,10 @@
 {
-  "name": "wiresnap",
-  "version": "0.0.3",
+  "name": "snaptail",
+  "version": "0.0.1",
   "description": "Run single file application in an instant.",
   "type": "module",
   "bin": {
-    "wiresnap": "./run.js"
+    "snaptail": "./cli.js"
   },
   "keywords": [
     "react",
@@ -15,15 +15,18 @@
   "author": "Sandro Rybarik",
   "license": "MIT",
   "dependencies": {
-    "bcryptjs": "^2.4.3"
+    "bcryptjs": "^2.4.3",
+    "chokidar": "^3.6.0",
+    "detype": "^1.0.10"
   },
   "devDependencies": {
     "@types/node": "^22.3.0",
     "create-vite": "^5.5.1",
+    "typescript": "^5.5.4",
     "vite": "^5.4.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/rybarix/wiresnap"
+    "url": "https://github.com/rybarix/snaptail"
   }
 }
