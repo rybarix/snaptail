@@ -10,7 +10,8 @@
     "react",
     "vite",
     "single file",
-    "web app"
+    "web app",
+    "nextjs"
   ],
   "author": "Sandro Rybarik",
   "license": "MIT",
