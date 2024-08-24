@@ -30,7 +30,7 @@ export async function copyApiToFile(sourceFile, imports, targetFile) {
   try {
     const content = await fs.readFile(sourceFile, "utf-8");
 
-    const apiRegex = /export const api = \[[\s\S]*?\];/;
+    const apiRegex = /export const api = \[[\s\S]*?\];?/;
     const match = content.match(apiRegex);
 
     if (match) {
