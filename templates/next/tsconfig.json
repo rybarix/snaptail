@@ -5,5 +5,8 @@
       "jsx": "react-jsx",
       "baseUrl": ".snaptail/node_modules", // Base directory for resolving non-relative module names
       "typeRoots": ["./.snaptail/node_modules/@types"],
+      "paths": {
+        "@/*": ["../src/*"],
+      }
     }
 }

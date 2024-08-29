@@ -76,5 +76,5 @@ export const getDependencies = async (filePath) => {
     /import\s+(?:(?:\w+(?:\s*,\s*\{\s*[\w\s,]+\})?|\{\s*[\w\s,]+\})|\*\s+as\s+\w+)\s+from\s+['"]([^'"]+)['"]/g;
   const matches = [...content.matchAll(importRegex)];
   const dependencies = new Set(matches.map((match) => match[1]));
-  return Array.from(dependencies).filter((dep) => !dep.startsWith("."));
+  return Array.from(dependencies).filter((dep) => !dep.startsWith(".") && !dep.startsWith('@'));
 };

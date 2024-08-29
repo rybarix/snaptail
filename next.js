@@ -15,6 +15,29 @@ import chokidar from "chokidar";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+export const setupShadCnUi = async () => {
+  // Default setup
+  await runAsync("npx", ["--yes", "shadcn-ui@latest", "init", "-d"], {
+    cwd: ".snaptail",
+  });
+
+  // Install all components
+  await runAsync("npx", ["--yes", "shadcn-ui@latest", "add", "--all"], {
+    cwd: ".snaptail",
+  });
+
+  const shadcnTwCssVars = await fs.readFile(
+    path.join(__dirname, "templates", "next", "shadcn.css"),
+    "utf-8"
+  );
+  // append css variables with default style
+  await fs.appendFile(
+    path.join(".snaptail", "src", "app", "globals.css"),
+    shadcnTwCssVars,
+    "utf-8"
+  );
+};
+
 const createNextApp = async () => {
   try {
     const postfix = Number(new Date()).toString();
@@ -143,20 +166,28 @@ const setupBasicFiles = async () => {
 
 /**
  * Setup's the single file app from single react file
- * @param {string} userFile - The path to the user's single react file
+ * @param {string} userFile  The path to the user's single react file
+ * @param {{ type: 'nextjs'|'react-ts', ui: 'shadcn' }|undefined} config To support multiple frameworks in the future
  */
-export const main = async (userFile) => {
+export const main = async (userFile, config = undefined) => {
   const fileExt = userFile.split(".").pop() === "tsx" ? "tsx" : "jsx";
   const isTs = fileExt === "tsx";
 
   // Detect if project is already set-up by checking if .wiresnap dir is created
   if (!fss.existsSync(path.join(".snaptail"))) {
     console.info("Setting up the project");
-    // Remove unnecessary files
-    await createNextApp(); // create .snaptail dir nextjs project
-  }
 
-  await setupBasicFiles();
+    if (config?.type === "nextjs") {
+      await createNextApp(); // create .snaptail dir nextjs project
+      await setupBasicFiles();
+
+      if (config?.ui === "shadcn") {
+        console.info("shadcn/ui setup");
+
+        await setupShadCnUi();
+      }
+    }
+  }
 
   if (isTs) {
     await fs.copyFile(
@@ -249,27 +280,58 @@ export const main = async (userFile) => {
   });
 };
 
-export const initCmd = async () => {
-  await Promise.allSettled([
-    fs.copyFile(
-      path.join(__dirname, "templates", "next", "starter.tsx"),
-      "myapp.tsx"
-    ),
-    fs.copyFile(
+/**
+ *
+ * @param {'shadcn'|undefined} ui
+ */
+export const initCmd = async (ui) => {
+  try {
+    if (ui === "shadcn") {
+      await fs.copyFile(
+        path.join(__dirname, "templates", "next", "startershadcn.tsx"),
+        "starter.tsx"
+      );
+    } else {
+      await fs.copyFile(
+        path.join(__dirname, "templates", "next", "starter.tsx"),
+        "starter.tsx"
+      );
+    }
+
+    await fs.copyFile(
       path.join(__dirname, "templates", "next", "tsconfig.json"),
       "tsconfig.json"
-    ),
-  ]);
+    );
+  } catch (e) {
+    console.error("unable to setup project");
+  }
 
   console.info("starter.tsx ..... has been created");
   console.info("tsconfig.json ... has been created");
-  console.info("run $ snaptail starter.tsx");
+  console.info("run $ npx snaptail starter.tsx");
 };
 
 export const cli = async () => {
-  if (process.argv.length === 3 && process.argv[2] === "init") {
+  /** @type {string|undefined} */
+  let ui = undefined;
+
+  // In current structure we need to always tell snaptail what ui we want to run.
+  // It would be much better if this can happen in init stage instead.
+  // But for alpha testing this is now good enoughTM.
+  if (
+    process.argv.length === 5 &&
+    process.argv[3] === "--ui" &&
+    process.argv[4] === "shadcn"
+  ) {
+    ui = "shadcn";
+  } else if (process.argv.length === 5 && process.argv[3] === "--ui") {
+    console.log("ui not supported");
+    process.exit(1);
+  }
+
+  if (process.argv.length >= 3 && process.argv[2] === "init") {
     try {
-      await initCmd();
+      await initCmd(ui);
       process.exit(0);
     } catch {
       process.exit(1);
@@ -283,6 +345,9 @@ export const cli = async () => {
       process.exit(0);
     });
 
-    main(process.argv[2]);
+    main(process.argv[2], {
+      type: "nextjs",
+      ui,
+    });
   }
 };

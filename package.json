@@ -1,6 +1,6 @@
 {
   "name": "snaptail",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Run single file application in an instant.",
   "type": "module",
   "bin": {

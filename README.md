@@ -2,10 +2,21 @@
 
 A tool for building web apps with React based on Nextjs with single file.
 
+Note that this is alpha version and things may change or break after upgrading.
+
 ```sh
 npx snaptail init
 npx snaptail starter.tsx
 ```
+
+**Shadcn UI starter:**
+```sh
+# with shadcn support, every component installed
+npx snaptail init --ui shadcn
+npx snaptail starter.tsx --ui shadcn
+```
+
+Next step is to redesign the CLI so that the init step does all heavy lifting.
 
 ## One file applications
 
@@ -17,6 +28,7 @@ Snaptail **hides build system** under .snaptail dir and allows you to prototype 
 - allows you to define apis within the file
 - auto-detects packages and installs them
 - typescript support
+- shadcn support (alpha)
 
 ## Why
 
