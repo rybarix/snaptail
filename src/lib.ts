@@ -1,39 +1,40 @@
-import { Command } from "commander";
-import path from "path";
-import { fileURLToPath } from "url";
+import path from "node:path";
 import { setupProject, SetupStep } from "./templator.js";
-import fs2 from "fs-extra";
-import { type PathLike } from "fs";
 import { makeOnFileChangeNextJs } from "./frameworks/nextjs.js";
+import { PathLike } from "node:fs";
+import fs2 from "fs-extra";
+import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const program = new Command();
+enum FrameWorkEnum {
+  Unknown = "__unknown__",
+  NextJs = "nextjs",
+}
 
-const starterFile = "starter.tsx";
 const projectName = () => ".snaptail"; // project directory
+const starterFile = "starter.tsx";
 
 // Path to project dir
 export const ppath = (...paths: string[]) => {
   const p = path.join(process.cwd(), projectName(), ...paths);
-  console.log("ppath", p);
   return p;
 };
 // Update spath function to use the provided path if available
-export const spath = (...paths: string[]) => {
-  const basePath = path.resolve(program.opts().base || __dirname);
-  console.log("base path", basePath);
-  return path.join(basePath, ...paths);
+export const spath = (basePath?: string, ...paths: string[]) => {
+  return path.join(basePath ?? __dirname, ...paths);
 };
-
+// path from - relative to process execution path
 export const cpath = (...paths: string[]) => {
   const p = path.join(process.cwd(), ...paths);
-  console.log("cpath", p);
   return p;
 };
 
-async function initializeProject(options: { ui: string }) {
+export async function initializeProject(options: {
+  ui: string;
+  base?: string;
+}) {
   console.log("Initializing a new Snaptail project...");
   // Get current absolute path to this folder and create hash off it.
 
@@ -52,12 +53,12 @@ async function initializeProject(options: { ui: string }) {
     { action: "initNextProject", directory: projectName() },
     {
       action: "replaceFile",
-      sourcePath: spath("templates", "next", "page.tsx"),
+      sourcePath: spath(options?.base, "templates", "next", "page.tsx"),
       targetPath: ppath("src", "app", "page.tsx"),
     },
     {
       action: "replaceFile",
-      sourcePath: spath("templates", "next", "globals.css"),
+      sourcePath: spath(options?.base, "templates", "next", "globals.css"),
       targetPath: ppath("src", "app", "globals.css"),
     },
     {
@@ -66,39 +67,52 @@ async function initializeProject(options: { ui: string }) {
     },
     {
       action: "copyFile",
-      sourcePath: spath("templates", "next", "tsconfig.json"),
+      sourcePath: spath(options?.base, "templates", "next", "tsconfig.json"),
       destinationPath: cpath("tsconfig.json"),
     },
   ];
 
   if (uiLibrary === "shadcn") {
     steps.push(
-      { action: "runNpmInstall" },
       {
         action: "executeCommand",
         command: "npx",
-        args: ["--yes", "shadcn-ui@latest", "init", "-d"],
+        args: ["--yes", "shadcn@latest", "init", "-d"],
+        options: {
+          cwd: cpath(projectName()),
+          stdio: "inherit",
+        },
       },
       {
         action: "executeCommand",
         command: "npx",
-        args: ["--yes", "shadcn-ui@latest", "add", "--all"],
+        args: ["--yes", "shadcn@latest", "add", "--all", "-o"],
+        options: {
+          cwd: cpath(projectName()),
+          stdio: "inherit",
+        },
       },
       {
         action: "appendFile",
-        sourcePath: spath("templates", "next", "shadcn.css"),
+        sourcePath: spath(options?.base, "templates", "next", "shadcn.css"),
         targetPath: ppath("src", "app", "globals.css"),
       },
       {
         action: "copyFile",
-        sourcePath: spath("templates", "next", "startershadcn.tsx"),
+        sourcePath: spath(
+          options?.base,
+          "templates",
+          "next",
+          "startershadcn.tsx"
+        ),
         destinationPath: cpath(starterFile),
-      }
+      },
+      { action: "runNpmInstall" }
     );
   } else {
     steps.push({
       action: "copyFile",
-      sourcePath: spath("templates", "next", "starter.tsx"),
+      sourcePath: spath(options?.base, "templates", "next", "starter.tsx"),
       destinationPath: cpath(starterFile),
     });
   }
@@ -112,15 +126,12 @@ async function initializeProject(options: { ui: string }) {
   }
 }
 
-enum FrameWorkEnum {
-  Unknown = "__unknown__",
-  NextJs = "nextjs",
-}
-
-async function runSingleFileApplication(file: PathLike) {
+export async function runSingleFileApplication(
+  file: PathLike,
+  _options: { base?: string }
+) {
   console.log(`Running file: ${file}`);
 
-  // TODO: detect framework
   let framework: FrameWorkEnum = FrameWorkEnum.Unknown;
 
   // To detect framework we need to look for next.config.mjs
@@ -145,6 +156,11 @@ async function runSingleFileApplication(file: PathLike) {
         targetPaths: [cpath(file.toString()), cpath(".env")],
         callback: makeOnFileChangeNextJs(),
       },
+      // trigger build by touching starter file
+      {
+        action: "touchFile",
+        filename: starterFile,
+      },
       {
         action: "executeCommand",
         command: "npm",
@@ -164,7 +180,7 @@ async function runSingleFileApplication(file: PathLike) {
   }
 }
 
-async function buildProject(options: { target: string }) {
+export async function buildProject(options: { target: string; base?: string }) {
   console.log(`Building project for target: ${options.target}`);
 
   const steps: SetupStep[] = [
@@ -188,42 +204,3 @@ async function buildProject(options: { target: string }) {
     console.error("Build failed:", error);
   }
 }
-
-program
-  .command("init")
-  .description("Initialize a new Snaptail project")
-  .option("--ui <library>", "Specify the UI library to use (e.g., shadcn)")
-  .action(initializeProject);
-
-program
-  .command("run <file>")
-  .description("Run a single file application")
-  .action(runSingleFileApplication);
-
-program
-  .command("build")
-  .description("Build the project for deployment")
-  .requiredOption(
-    "--target <target>",
-    "Specify the build target (e.g., nextjs, snaptail)"
-  )
-  .action(buildProject);
-
-program.option("-b, --base <path>", "Specify the path to Snaptail files");
-
-// Add a default action for when no command is specified
-program.action(() => {
-  if (
-    process.argv.length <= 2 ||
-    process.argv.includes("-h") ||
-    process.argv.includes("--help")
-  ) {
-    program.outputHelp();
-  } else {
-    console.log(
-      "Invalid command. Use --help for a list of available commands."
-    );
-  }
-});
-
-program.parse();

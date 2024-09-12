@@ -22,7 +22,12 @@ async function executeCommand(
     const process = spawn(command, args, options);
     process.on("close", (code) => {
       if (code === 0) resolve();
-      else reject(new Error(`Command failed with exit code ${code}`));
+      else
+        reject(
+          new Error(
+            `Command ${command} ${args?.join(" ")} failed with exit code ${code}`
+          )
+        );
     });
   });
 }
@@ -173,6 +178,18 @@ async function renameFile(
   }
 }
 
+// useful when when we want to trigger watch file change
+async function touchFile(filename: string) {
+  const time = new Date();
+  await fs.utimes(filename, time, time).catch(async function (err) {
+    if ("ENOENT" !== err.code) {
+      throw err;
+    }
+    let fh = await fs.open(filename, "a");
+    await fh.close();
+  });
+}
+
 /**
  * Compose and execute project setup steps
  * @param {string} projectName - Name of the project
@@ -247,6 +264,11 @@ type RenameFileStep = {
   destinationPath: string;
 };
 
+type TouchFileStep = {
+  action: "touchFile";
+  filename: string;
+};
+
 export type SetupStep =
   | InitNextProjectStep
   | ReplaceFileStep
@@ -259,7 +281,8 @@ export type SetupStep =
   | ExecuteCommandStep
   | AppendFileStep
   | DetectAndInstallDependenciesStep
-  | RenameFileStep;
+  | RenameFileStep
+  | TouchFileStep;
 
 const setupWatchForFileChanges = (
   targetPaths: string[],
@@ -306,7 +329,6 @@ export async function copyFileAndCreateDir(
 
   // Copy the file
   await fs.copyFile(sourcePath, destPath);
-
   console.log("File copied successfully");
 }
 
@@ -341,7 +363,6 @@ export async function setupProject(
           await buildProject(projectName);
           break;
         case "watchForChanges":
-          console.log("watchForChanges", step.targetPaths);
           watchers.push(
             setupWatchForFileChanges(step.targetPaths, step?.callback)
           );
@@ -357,6 +378,9 @@ export async function setupProject(
           break;
         case "renameFile":
           await renameFile(step.sourcePath, step.destinationPath);
+          break;
+        case "touchFile":
+          await touchFile(step.filename);
           break;
         default:
           console.warn(`Unknown action: ${(step as SetupStep).action}`);

@@ -2,7 +2,7 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import { copyFileAndCreateDir } from "../templator.js";
 import { copyApiToFile, getAllImportsRawFromFile } from "../../lib.js";
-import { cpath, ppath } from "../snaptail.js";
+import { cpath, ppath } from "../lib.js";
 import { generateNextApiRoutes } from "../../next.js";
 
 export const makeOnFileChangeNextJs = () => {
@@ -31,7 +31,7 @@ export const makeOnFileChangeNextJs = () => {
 
       await generateNextApiRoutes(
         (await import(ppath("user_api.mjs"))).api,
-        ppath("src", "pages", "api")
+        ppath("src", "pages")
       );
 
       console.log("Project files updated successfully");
