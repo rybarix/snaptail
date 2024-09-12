@@ -29,16 +29,18 @@ async function executeCommand(
 
 /**
  * Initialize a Next.js project
- * @param {string} projectName - Name of the project
  * @returns {Promise<void>}
  */
-async function initNextProject(projectName: any): Promise<void> {
+async function initNextProject(projectDir: string): Promise<void> {
+  const postfix = Number(new Date()).toString();
+  const tmpDir = "snaptail_" + postfix;
+
   await executeCommand(
     "npx",
     [
       "--yes",
       "create-next-app@latest",
-      projectName,
+      tmpDir,
       "--typescript",
       "--eslint",
       "--app",
@@ -53,7 +55,8 @@ async function initNextProject(projectName: any): Promise<void> {
       stdio: "inherit",
     }
   );
-  console.log(`Next.js project ${projectName} initialized successfully.`);
+  await renameFile(tmpDir, projectDir);
+  console.log(`Next.js project ${projectDir} initialized successfully.`);
 }
 
 /**
@@ -157,6 +160,19 @@ async function appendFile(
   );
 }
 
+async function renameFile(
+  sourcePath: string,
+  destinationPath: string
+): Promise<void> {
+  try {
+    await fs.rename(sourcePath, destinationPath);
+    console.log(`File renamed from ${sourcePath} to ${destinationPath}`);
+  } catch (error) {
+    console.error(`Error renaming file: ${error}`);
+    throw error;
+  }
+}
+
 /**
  * Compose and execute project setup steps
  * @param {string} projectName - Name of the project
@@ -165,6 +181,8 @@ async function appendFile(
  */
 type InitNextProjectStep = {
   action: "initNextProject";
+  /** Directory to rename the project to */
+  directory: string;
 };
 
 type ReplaceFileStep = {
@@ -199,7 +217,7 @@ type BuildProjectStep = {
 
 type WatchForChangesStep = {
   action: "watchForChanges";
-  targetPath: string;
+  targetPaths: string[];
   callback: (filePath: string) => Promise<void>;
 };
 
@@ -222,6 +240,13 @@ type DetectAndInstallDependenciesStep = {
   targetPaths: PathLike[];
 };
 
+// Define the RenameFileStep type
+type RenameFileStep = {
+  action: "renameFile";
+  sourcePath: string;
+  destinationPath: string;
+};
+
 export type SetupStep =
   | InitNextProjectStep
   | ReplaceFileStep
@@ -233,13 +258,14 @@ export type SetupStep =
   | WatchForChangesStep
   | ExecuteCommandStep
   | AppendFileStep
-  | DetectAndInstallDependenciesStep;
+  | DetectAndInstallDependenciesStep
+  | RenameFileStep;
 
 const setupWatchForFileChanges = (
-  targetPath: string,
+  targetPaths: string[],
   action: ((filePath: string) => Promise<void>) | undefined = undefined
 ) => {
-  return watch(targetPath).on("change", async (filePath) => {
+  return watch(targetPaths).on("change", async (filePath) => {
     if (action) {
       await action(filePath);
     }
@@ -294,7 +320,7 @@ export async function setupProject(
     for (const step of steps) {
       switch (step.action) {
         case "initNextProject":
-          await initNextProject(projectName);
+          await initNextProject(step.directory);
           break;
         case "replaceFile":
           await replaceFile(step.targetPath, step.sourcePath);
@@ -315,9 +341,9 @@ export async function setupProject(
           await buildProject(projectName);
           break;
         case "watchForChanges":
-          console.log("watchForChanges", step.targetPath);
+          console.log("watchForChanges", step.targetPaths);
           watchers.push(
-            setupWatchForFileChanges(step.targetPath, step?.callback)
+            setupWatchForFileChanges(step.targetPaths, step?.callback)
           );
           break;
         case "executeCommand":
@@ -328,6 +354,9 @@ export async function setupProject(
           break;
         case "detectAndInstallDependencies":
           await installDependencies(step.projectPath, step.targetPaths);
+          break;
+        case "renameFile":
+          await renameFile(step.sourcePath, step.destinationPath);
           break;
         default:
           console.warn(`Unknown action: ${(step as SetupStep).action}`);

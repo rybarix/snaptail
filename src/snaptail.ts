@@ -1,33 +1,33 @@
 import { Command } from "commander";
 import path from "path";
 import { fileURLToPath } from "url";
-import { copyFileAndCreateDir, setupProject, SetupStep } from "./templator.js";
-import fs from "fs/promises";
+import { setupProject, SetupStep } from "./templator.js";
+import fs2 from "fs-extra";
 import { type PathLike } from "fs";
-import { copyApiToFile, getAllImportsRawFromFile } from "../lib.js";
-import { generateNextApiRoutes } from "../next.js";
+import { makeOnFileChangeNextJs } from "./frameworks/nextjs.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const program = new Command();
 
-const projectName = () => "snaptail-project";
+const starterFile = "starter.tsx";
+const projectName = () => ".snaptail"; // project directory
 
 // Path to project dir
-const ppath = (...paths: string[]) => {
+export const ppath = (...paths: string[]) => {
   const p = path.join(process.cwd(), projectName(), ...paths);
   console.log("ppath", p);
   return p;
 };
 // Update spath function to use the provided path if available
-const spath = (...paths: string[]) => {
+export const spath = (...paths: string[]) => {
   const basePath = path.resolve(program.opts().base || __dirname);
   console.log("base path", basePath);
   return path.join(basePath, ...paths);
 };
 
-const cpath = (...paths: string[]) => {
+export const cpath = (...paths: string[]) => {
   const p = path.join(process.cwd(), ...paths);
   console.log("cpath", p);
   return p;
@@ -49,7 +49,7 @@ async function initializeProject(options: { ui: string }) {
 
   // Steps to initialize the project
   const steps: SetupStep[] = [
-    { action: "initNextProject" },
+    { action: "initNextProject", directory: projectName() },
     {
       action: "replaceFile",
       sourcePath: spath("templates", "next", "page.tsx"),
@@ -92,90 +92,70 @@ async function initializeProject(options: { ui: string }) {
       {
         action: "copyFile",
         sourcePath: spath("templates", "next", "startershadcn.tsx"),
-        destinationPath: cpath("starter.tsx"),
+        destinationPath: cpath(starterFile),
       }
     );
   } else {
     steps.push({
       action: "copyFile",
       sourcePath: spath("templates", "next", "starter.tsx"),
-      destinationPath: cpath("starter.tsx"),
+      destinationPath: cpath(starterFile),
     });
   }
 
   try {
     await setupProject(projectName(), steps);
     console.log("Project initialized successfully.");
-    console.log("To get started, run: cd snaptail-project && npm run dev");
+    console.log(`To get started, run: npx snaptail@latest run ${starterFile}`);
   } catch (error) {
     console.error("Failed to initialize project:", error);
   }
 }
 
+enum FrameWorkEnum {
+  Unknown = "__unknown__",
+  NextJs = "nextjs",
+}
+
 async function runSingleFileApplication(file: PathLike) {
   console.log(`Running file: ${file}`);
 
-  const steps: SetupStep[] = [
-    {
-      // detect and install dependencies
-      action: "detectAndInstallDependencies",
-      projectPath: cpath(projectName()),
-      targetPaths: [cpath(file.toString())],
-    },
-    {
-      action: "watchForChanges",
-      targetPath: cpath(file.toString()),
-      callback: async (filePath) => {
-        console.log(`File changed: ${filePath}`);
+  // TODO: detect framework
+  let framework: FrameWorkEnum = FrameWorkEnum.Unknown;
 
-        const baseName = path.basename(filePath);
+  // To detect framework we need to look for next.config.mjs
+  if (await fs2.exists(ppath("next.config.mjs"))) {
+    framework = FrameWorkEnum.NextJs;
+  }
 
-        if (baseName === file.toString() || baseName === ".env") {
-          try {
-            const fileExt = path.extname(file.toString());
-
-            // Copy the user's file to the project
-            await copyFileAndCreateDir(
-              file,
-              ppath("src", "app", "user", `app${fileExt}`)
-            );
-
-            console.log("Updating API routes");
-
-            const imports = await getAllImportsRawFromFile(file.toString());
-
-            await copyApiToFile(
-              file.toString(),
-              imports,
-              ppath("user_api.mjs")
-            );
-
-            await generateNextApiRoutes(
-              (await import(ppath("user_api.mjs"))).api,
-              ppath("src", "pages", "api")
-            );
-
-            if (filePath === ".env") {
-              await fs.copyFile(cpath(".env"), ppath(".env"));
-            }
-
-            console.log("Project files updated successfully");
-          } catch (error) {
-            console.error("Error updating project files:", error);
-          }
-        }
+  let steps: SetupStep[] = [];
+  if (framework === FrameWorkEnum.Unknown) {
+    console.log("Unknown framework");
+    process.exit(1);
+  } else if (framework === FrameWorkEnum.NextJs) {
+    steps = [
+      {
+        // detect and install dependencies
+        action: "detectAndInstallDependencies",
+        projectPath: cpath(projectName()),
+        targetPaths: [cpath(file.toString())],
       },
-    },
-    {
-      action: "executeCommand",
-      command: "npm",
-      args: ["--prefix", projectName(), "run", "dev"],
-      options: {
-        cwd: cpath("."),
-        stdio: "inherit",
+      {
+        action: "watchForChanges",
+        targetPaths: [cpath(file.toString()), cpath(".env")],
+        callback: makeOnFileChangeNextJs(),
       },
-    },
-  ];
+      {
+        action: "executeCommand",
+        command: "npm",
+        args: ["--prefix", projectName(), "run", "dev"],
+        options: {
+          cwd: cpath("."),
+          stdio: "inherit",
+        },
+      },
+    ];
+  }
 
   try {
     await setupProject(projectName(), steps);
