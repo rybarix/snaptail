@@ -4,6 +4,9 @@ import { makeOnFileChangeNextJs } from "./frameworks/nextjs.js";
 import { PathLike } from "node:fs";
 import fs2 from "fs-extra";
 import { fileURLToPath } from "url";
+import { createHash } from "node:crypto";
+import os from "node:os";
+import fs from "node:fs/promises";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,19 +34,46 @@ export const cpath = (...paths: string[]) => {
   return p;
 };
 
+const hashOfCurrentDir = () => {
+  const toHashDir = createHash("sha256");
+  toHashDir.update(process.cwd());
+  return toHashDir.digest("hex");
+};
+
+const hiddenDirFullPath = () => {
+  return path.join(os.homedir(), ".snaptail", hashOfCurrentDir());
+};
+
 export async function initializeProject(options: {
   ui: string;
   base?: string;
+  hidden?: boolean;
+  skipStarter?: boolean; // User has his own file, don't create starter.tsx
 }) {
   console.log("Initializing a new Snaptail project...");
   // Get current absolute path to this folder and create hash off it.
 
-  // EXPERIMENTAL TODO: try hiding project in home dir ~/ using hash of cwd
-  // const currentDir = await fs.realpath(".");
-  // Store the build dir in
-  // const toHashDir = createHash("sha256");
-  // toHashDir.update(currentDir);
-  // const dirHash = toHashDir.digest("hex");
+  if (options.hidden) {
+    console.log("Hiding project in home dir");
+    // EXPERIMENTAL TODO: try hiding project in home dir ~/ using hash of cwd
+    const snaptailInernal = await fs.realpath(".."); // TODO: RESOLVE THIS, because this won't be working when executed from cli
+    options.base = snaptailInernal;
+
+    // Store the build dir in
+    // const dirHash = hashOfCurrentDir();
+
+    // full path to hidden dir
+    // const hiddenDirFullPath = path.join(os.homedir(), ".snaptail", dirHash);
+
+    // If dir already exists, we don't need to create new one
+    if (!(await fs2.exists(hiddenDirFullPath()))) {
+      // Create hidden dir in home dir
+      await fs.mkdir(hiddenDirFullPath(), { recursive: true });
+    }
+
+    // Path to the hidden folder must be reflected in tsconfig.json paths...
+    process.chdir(hiddenDirFullPath());
+  }
 
   // If we can't init project directly in ~/ dir, init it here, and move it after
   const uiLibrary = options.ui || "default";
@@ -128,11 +158,27 @@ export async function initializeProject(options: {
 
 export async function runSingleFileApplication(
   file: PathLike,
-  _options: { base?: string }
+  options: { base?: string }
 ) {
   console.log(`Running file: ${file}`);
 
   let framework: FrameWorkEnum = FrameWorkEnum.Unknown;
+
+  // check if there is .snaptail folder in the current dir otherwise check for home dir
+  if (!(await fs2.exists(cpath(".snaptail")))) {
+    // local setup
+    await initializeProject({
+      ui: "shadcn",
+      skipStarter: true,
+      base: options.base,
+    });
+  }
+
+  /*if (await fs2.exists(hiddenDirFullPath())) {
+    // --hidden setup
+    // check if there is .snaptail folder in the home dir
+    process.chdir(hiddenDirFullPath());
+  }*/
 
   // To detect framework we need to look for next.config.mjs
   if (await fs2.exists(ppath("next.config.mjs"))) {
@@ -159,7 +205,7 @@ export async function runSingleFileApplication(
       // trigger build by touching starter file
       {
         action: "touchFile",
-        filename: starterFile,
+        filename: file.toString(),
       },
       {
         action: "executeCommand",

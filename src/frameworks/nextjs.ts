@@ -1,9 +1,9 @@
 import path from "node:path";
 import fs from "node:fs/promises";
 import { copyFileAndCreateDir } from "../templator.js";
-import { copyApiToFile, getAllImportsRawFromFile } from "../../lib.js";
+import { copyApiToFile, getAllImportsRawFromFile } from "../legacy/lib.js";
 import { cpath, ppath } from "../lib.js";
-import { generateNextApiRoutes } from "../../next.js";
+import { generateNextApiRoutes } from "../legacy/next.js";
 
 export const makeOnFileChangeNextJs = () => {
   return async (changedFile: string) => {

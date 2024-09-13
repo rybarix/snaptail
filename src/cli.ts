@@ -12,6 +12,7 @@ program
   .description("Initialize a new Snaptail project")
   .option("--ui <library>", "Specify the UI library to use (e.g., shadcn)")
   .option("-b, --base <path>", "Specify the path to Snaptail files")
+  .option("--hidden", "Hide the project in home dir (experimental)")
   .action(initializeProject);
 
 program

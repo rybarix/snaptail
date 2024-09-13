@@ -4,7 +4,8 @@ import { PathLike } from "fs";
 import { watch, type FSWatcher } from "chokidar";
 import fse from "fs-extra/esm";
 import path from "path";
-import { getDependencies } from "../lib.js";
+import { getDependencies } from "./legacy/lib.js";
+import { nextTick } from "process";
 
 /**
  * Execute a shell command
@@ -180,6 +181,7 @@ async function renameFile(
 
 // useful when when we want to trigger watch file change
 async function touchFile(filename: string) {
+  console.log(`Touching ${filename}`);
   const time = new Date();
   await fs.utimes(filename, time, time).catch(async function (err) {
     if ("ENOENT" !== err.code) {
@@ -380,7 +382,9 @@ export async function setupProject(
           await renameFile(step.sourcePath, step.destinationPath);
           break;
         case "touchFile":
-          await touchFile(step.filename);
+          nextTick(() => {
+            touchFile(step.filename);
+          });
           break;
         default:
           console.warn(`Unknown action: ${(step as SetupStep).action}`);
@@ -395,15 +399,3 @@ export async function setupProject(
     }
   }
 }
-
-// Example usage:
-// const steps = [
-//   { action: 'initNextProject' },
-//   { action: 'replaceFile', targetPath: 'pages/index.js', sourcePath: './custom/index.js' },
-//   { action: 'copyFile', sourcePath: './user/code.js', destinationPath: 'src/userCode.js' },
-//   { action: 'deleteFileOrDir', targetPath: 'styles' },
-//   { action: 'createDirectory', dirPath: 'src/components' },
-//   { action: 'runNpmInstall' },
-//   { action: 'buildProject' }
-// ];
-// await setupProject('my-next-project', steps);
