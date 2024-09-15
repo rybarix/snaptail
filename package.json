@@ -4,7 +4,7 @@
   "description": "Run single file application in an instant.",
   "type": "module",
   "bin": {
-    "snaptail": "./cli.js"
+    "snaptail": "./dist/cli.js"
   },
   "scripts": {
     "dev": "tsc && tsc --watch",

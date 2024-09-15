@@ -53,6 +53,12 @@ export async function initializeProject(options: {
   console.log("Initializing a new Snaptail project...");
   // Get current absolute path to this folder and create hash off it.
 
+  if (!options.base) {
+    // files are compiled to dist dir, so we need to have it in the base outside of it
+    options.base = path.join(__dirname, "..");
+    console.log("Base path:", options.base);
+  }
+
   if (options.hidden) {
     console.log("Hiding project in home dir");
     // EXPERIMENTAL TODO: try hiding project in home dir ~/ using hash of cwd

@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { Command } from "commander";
 import {
   buildProject,
@@ -9,10 +10,10 @@ const program = new Command();
 
 program
   .command("init")
-  .description("Initialize a new Snaptail project")
+  .description("Initialize a new Snaptail project in current directory")
   .option("--ui <library>", "Specify the UI library to use (e.g., shadcn)")
   .option("-b, --base <path>", "Specify the path to Snaptail files")
-  .option("--hidden", "Hide the project in home dir (experimental)")
+  // .option("--hidden", "Hide the project in home dir (experimental)")
   .action(initializeProject);
 
 program
