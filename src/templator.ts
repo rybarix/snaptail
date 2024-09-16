@@ -348,6 +348,13 @@ export async function setupProject(
 ): Promise<void> {
   let watchers: FSWatcher[] = [];
 
+  // TODO: Move upper level
+  process.on("SIGINT", () => {
+    for (const watcher of watchers) {
+      watcher.close();
+    }
+  });
+
   try {
     for (const step of steps) {
       switch (step.action) {
