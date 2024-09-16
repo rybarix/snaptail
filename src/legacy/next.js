@@ -81,14 +81,14 @@ const createNextApp = async () => {
  * Generate nextjs directory structure for api routes from a json object where
  * path is provided, handler function is provided and method is also provided.
  * Make sure that file generation supports URL parameters and dynamic routes.
- *
+ * @param {string} imports - Raw imports from api file (user_api.mjs)
  * @param {Object[]} routes - Array of route objects
  * @param {string} routes[].path - API route path
  * @param {Function} routes[].handler - Route handler function
  * @param {string} routes[].method - HTTP method (GET, POST, etc.)
  * @param {string} baseDir - Base directory for API routes
  */
-export async function generateNextApiRoutes(routes, baseDir) {
+export async function generateNextApiRoutes(imports, routes, baseDir) {
   for (const route of routes) {
     const { path: pathString, handler, method } = route;
     const segments = pathString.split("/").filter((segment) => segment);
@@ -113,6 +113,8 @@ export async function generateNextApiRoutes(routes, baseDir) {
 
     // Generate the content for the API route file
     const fileContent = `
+  ${imports}
+
   export default function handler(req, res) {
     const { method } = req;
 
@@ -141,7 +143,10 @@ const generateApiFiles = async () => {
 
   const { api: userApiConf } = await import(importPath);
 
+  const imports = await getAllImportsRawFromFile(importPath);
+
   await generateNextApiRoutes(
+    imports,
     userApiConf,
     path.join(".snaptail", "src", "pages")
   );

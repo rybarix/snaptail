@@ -1,10 +1,14 @@
 {
   "name": "snaptail",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Run single file application in an instant.",
   "type": "module",
   "bin": {
-    "snaptail": "./cli.js"
+    "snaptail": "dist/cli.js"
+  },
+  "scripts": {
+    "dev": "tsc && tsc --watch",
+    "build": "tsc"
   },
   "keywords": [
     "react",
@@ -18,16 +22,24 @@
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "chokidar": "^3.6.0",
-    "detype": "^1.0.10"
+    "commander": "^12.1.0",
+    "detype": "^1.0.10",
+    "fs-extra": "^11.2.0"
   },
   "devDependencies": {
-    "@types/node": "^22.3.0",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "~20.10.0",
     "create-vite": "^5.5.1",
     "typescript": "^5.5.4",
     "vite": "^5.4.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/rybarix/snaptail"
-  }
+    "url": "git+https://github.com/rybarix/snaptail.git"
+  },
+  "files": [
+    "cli.js",
+    "dist/",
+    "templates/"
+  ]
 }

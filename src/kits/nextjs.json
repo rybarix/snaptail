@@ -1,0 +1,22 @@
+{
+    "steps": [
+        {
+            "action": "initNextJsProject",
+            "dir": "$projectName"
+        },
+        {
+            "action": "cp",
+            "src": "/templates/next/globals.css",
+            "dst": "@/src/app/page.tsx"
+        },
+        {
+            "action": "rm",
+            "src": "@/src/app/index.css"
+        },
+        {
+            "action": "cp",
+            "src": "~/templates/next/tsconfig.json",
+            "dst": "tsconfig.json"
+        }
+    ]
+}
