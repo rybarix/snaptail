@@ -8,6 +8,12 @@ import {
 
 const program = new Command();
 
+// Ensure the watcher is closed when the process exits
+process.on("SIGINT", () => {
+  console.log("Shutting down...");
+  process.exit(0);
+});
+
 program
   .command("init")
   .description("Initialize a new Snaptail project in current directory")
