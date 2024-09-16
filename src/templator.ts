@@ -45,7 +45,7 @@ async function initNextProject(projectDir: string): Promise<void> {
     "npx",
     [
       "--yes",
-      "create-next-app@latest",
+      "create-next-app@14.2.11",
       tmpDir,
       "--typescript",
       "--eslint",

@@ -113,7 +113,7 @@ export async function initializeProject(options: {
       {
         action: "executeCommand",
         command: "npx",
-        args: ["--yes", "shadcn@latest", "init", "-d"],
+        args: ["--yes", "shadcn@2.0.7", "init", "-d"],
         options: {
           cwd: cpath(projectName()),
           stdio: "inherit",
@@ -122,7 +122,7 @@ export async function initializeProject(options: {
       {
         action: "executeCommand",
         command: "npx",
-        args: ["--yes", "shadcn@latest", "add", "--all", "-o"],
+        args: ["--yes", "shadcn@2.0.7", "add", "--all", "-o"],
         options: {
           cwd: cpath(projectName()),
           stdio: "inherit",
