@@ -271,6 +271,13 @@ type TouchFileStep = {
   filename: string;
 };
 
+// escape hatch for running arbitrary code
+// should be avoided if possible
+type RunCodeStep = {
+  action: "runCode";
+  callback: () => Promise<void>;
+};
+
 export type SetupStep =
   | InitNextProjectStep
   | ReplaceFileStep
@@ -284,7 +291,8 @@ export type SetupStep =
   | AppendFileStep
   | DetectAndInstallDependenciesStep
   | RenameFileStep
-  | TouchFileStep;
+  | TouchFileStep
+  | RunCodeStep;
 
 const setupWatchForFileChanges = (
   targetPaths: string[],
@@ -385,6 +393,9 @@ export async function setupProject(
           nextTick(() => {
             touchFile(step.filename);
           });
+          break;
+        case "runCode":
+          await step.callback();
           break;
         default:
           console.warn(`Unknown action: ${(step as SetupStep).action}`);

@@ -8,8 +8,9 @@ import { generateNextApiRoutes } from "../legacy/next.js";
 export const makeOnFileChangeNextJs = () => {
   return async (changedFile: string) => {
     console.log(`File changed: ${changedFile}`);
+    const baseName = path.basename(changedFile);
 
-    if (changedFile === ".env") {
+    if (baseName === ".env") {
       await fs.copyFile(cpath(".env"), ppath(".env"));
       return;
     }
@@ -26,10 +27,10 @@ export const makeOnFileChangeNextJs = () => {
       console.log("Updating API routes");
 
       const imports = await getAllImportsRawFromFile(changedFile);
-
       await copyApiToFile(changedFile, imports, ppath("user_api.mjs"));
 
       await generateNextApiRoutes(
+        await getAllImportsRawFromFile(ppath("user_api.mjs")),
         (await import(ppath("user_api.mjs"))).api,
         ppath("src", "pages")
       );

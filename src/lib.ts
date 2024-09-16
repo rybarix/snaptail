@@ -208,10 +208,11 @@ export async function runSingleFileApplication(
         targetPaths: [cpath(file.toString()), cpath(".env")],
         callback: makeOnFileChangeNextJs(),
       },
-      // trigger build by touching starter file
       {
-        action: "touchFile",
-        filename: file.toString(),
+        action: "runCode",
+        callback: async () => {
+          makeOnFileChangeNextJs()(file.toString());
+        },
       },
       {
         action: "executeCommand",
