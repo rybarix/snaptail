@@ -1,0 +1,36 @@
+{
+  "steps": [
+    {
+      "action": "command",
+      "args": [
+        "npx",
+        "shadcn@latest",
+        "init",
+        "-d"
+      ],
+      "options": {
+        "cwd": "@/",
+        "stdio": "inherit"
+      }
+    },
+    {
+      "action": "command",
+      "args": [
+        "npx",
+        "shadcn@latest",
+        "add",
+        "--all",
+        "-o"
+      ],
+      "options": {
+        "cwd": "@/",
+        "stdio": "inherit"
+      }
+    },
+    {
+      "action": "cp",
+      "sourcePath": "/templates/next/globals.css",
+      "destinationPath": "@/src/app/globals.css"
+    }
+  ]
+}
