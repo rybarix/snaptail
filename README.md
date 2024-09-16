@@ -5,15 +5,16 @@ A tool for building web apps with React based on Nextjs with single file.
 Note that this is alpha version and things may change or break after upgrading.
 
 ```sh
-npx snaptail init
-npx snaptail starter.tsx
+npx snaptail@latest init
+npx snaptail@latest run starter.tsx
 ```
 
 **Shadcn UI starter:**
+
 ```sh
 # with shadcn support, every component installed
-npx snaptail init --ui shadcn
-npx snaptail starter.tsx --ui shadcn
+npx snaptail@latest init --ui shadcn
+npx snaptail@latest run starter.tsx
 ```
 
 Next step is to redesign the CLI so that the init step does all heavy lifting.
