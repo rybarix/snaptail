@@ -4,6 +4,15 @@ A tool for building web apps with React based on Nextjs with single file.
 
 Note that this is alpha version and things may change or break after upgrading.
 
+**Minimal setup:**
+
+```sh
+echo 'export const App = () => <div>Hello</div>' > start.tsx
+npx snaptail@latest run start.tsx
+```
+
+Or start with `init` command:
+
 ```sh
 npx snaptail@latest init
 npx snaptail@latest run starter.tsx
