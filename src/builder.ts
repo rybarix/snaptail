@@ -1,74 +1,141 @@
-import path from "node:path";
-// import fs from "node:fs/promises";
+import { spawn } from "node:child_process";
+import fs from "node:fs/promises";
+import { parseVariables, resolvePath } from "./templvars.js";
+import { move, remove } from "fs-extra";
 
-const PROJECT_DIR = ".snaptail";
-
-type InitNextJsProject = {
-  action: "initNextJsProject";
-  dir: string;
+// #region TYPES
+type ActionCmd = {
+  action: "cmd";
+  cmd: string;
+  args: string[];
+  cwd: string;
 };
-
-type CpAction = {
-  action: "cp";
+type ActionCopyRaw = {
+  action: "write_raw";
+  src: string[];
+  dst: string;
+};
+type ActionMv = {
+  action: "mv";
   src: string;
   dst: string;
 };
-
-type RmAction = {
+type ActionRm = {
   action: "rm";
-  src: string;
+  src: string[] | string; // Array of files, or single file
 };
 
-type ConfigStep = InitNextJsProject | CpAction | RmAction | CpAction;
+type Step = ActionCmd | ActionCopyRaw | ActionMv | ActionRm;
 
-export type StepsFile = {
-  steps: ConfigStep[];
+type StepsFile = {
+  vars: Record<string, string>;
+  steps: Step[];
 };
 
-/**
- * Path resolution depending on the path type.
- *
- * Each path is expected to start with one of the following symbols:
- *
- * - "@" - relative path resolution to the snaptail project dir
- * - "~" - relate path resolution to user's dir
- * - "/" - relative resolution to the snaptail internal files
- */
-export const pth = (filePath: string) => {
-  const type = filePath.at(0);
-  const justPath = filePath.slice(1);
+export const PATH_ATTRS_SET = new Set(["src", "dst"] as const);
+// #endregion
 
-  switch (type) {
-    case "@":
-      return path.join(PROJECT_DIR, justPath);
-    case "~":
-      // path from where user is executing the command
-      return path.join(process.cwd(), justPath);
-    case "/":
-      // path from snaptail internal files
-      return path.join(__dirname, justPath);
-    default:
-      throw new Error(`unknown path type ${type}`);
-  }
+// #region ACTIONS
+const writeRaw = async (src: string[], dst: string) => {
+  await fs.writeFile(dst, src.join("\n"), "utf-8");
 };
 
-export const handleStep = async (step: ConfigStep) => {
+export const cmdAsync = (
+  command: Parameters<typeof spawn>[0],
+  args: Parameters<typeof spawn>[1],
+  options: Parameters<typeof spawn>[2]
+) => {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, options);
+    child.on("close", resolve);
+    child.on("error", reject);
+  });
+};
+// #endregion
+
+// #region Public API
+
+// Now we need a function that will take steps file and variables and will resolve all paths in the steps file
+export const resolvePathsInSteps = (
+  steps: Step[],
+  variables: Record<string, string>
+) => {
+  return steps.map((step) => {
+    switch (step.action) {
+      case "cmd":
+        return {
+          ...step,
+          // TODO: resolve paths everywhere, resolvePath is bad name, better will be resolveVar
+          args: step.args.map((a) => resolvePath(a, variables)),
+          cwd: resolvePath(step.cwd, variables),
+        };
+      case "write_raw":
+        return {
+          ...step,
+          src: step.src.map((s) => resolvePath(s, variables)),
+          dst: resolvePath(step.dst, variables),
+        };
+      case "mv":
+        return {
+          ...step,
+          src: resolvePath(step.src, variables),
+          dst: resolvePath(step.dst, variables),
+        };
+      case "rm":
+        if (Array.isArray(step.src)) {
+          return {
+            ...step,
+            src: step.src.map((s) => resolvePath(s, variables)),
+          };
+        } else {
+          return {
+            ...step,
+            src: resolvePath(step.src, variables),
+          };
+        }
+    }
+  });
+};
+
+export const runStep = async (step: Step) => {
   switch (step.action) {
-    case "initNextJsProject":
-      //   await setupProject(step.dir, []);
+    case "cmd":
+      await cmdAsync(step.cmd, step.args, { cwd: step.cwd });
+      break;
+    case "write_raw":
+      await writeRaw(step.src, step.dst);
+      break;
+    case "mv":
+      await move(step.src, step.dst);
+      break;
+    case "rm":
+      Array.isArray(step.src)
+        ? await Promise.allSettled(step.src.map((s) => remove(s)))
+        : await remove(step.src);
       break;
   }
 };
 
-export const loadSteps = async (
-  _stepsFilepath: string,
-  _options = undefined
-) => {
-  try {
-    // const _conf: StepsFile = JSON.parse(
-    //   await fs.readFile(stepsFilepath, "utf-8")
-    // );
-    // for (const s of conf.steps) {
-    // }
-  } catch (error) {}
+export const runAll = async (steps: Step[]) => {
+  for (let i = 0; i < steps.length; i++) {
+    try {
+      await runStep(steps[i]);
+    } catch (e) {
+      console.error(`Error running ${i + 1}th step: ${steps[i].action}`);
+      throw e;
+    }
+  }
 };
+
+export const loadStepsFile = async (
+  stepsFilePath: string,
+  injectedVariables: Record<string, string> = {}
+): Promise<StepsFile> => {
+  const steps = JSON.parse(await fs.readFile(stepsFilePath, "utf-8"));
+  const variables = parseVariables(steps.vars, injectedVariables);
+  return {
+    steps: resolvePathsInSteps(steps.steps, variables),
+    vars: variables,
+  };
+};
+// #endregion

@@ -1,0 +1,84 @@
+{
+    "vars": {
+        "$projectDir": ".snaptail"
+    },
+    "steps": [
+        {
+            "action": "cmd",
+            "cmd": "npm",
+            "args": [
+                "install",
+                "@mantine/core",
+                "@mantine/hooks",
+                "@mantine/nprogress",
+                "@mantine/modals",
+                "@mantine/carousel",
+                "embla-carousel-react",
+                "@mantine/spotlight",
+                "@mantine/tiptap",
+                "@tabler/icons-react",
+                "@tiptap/react",
+                "@tiptap/extension-link",
+                "@tiptap/starter-kit",
+                "@mantine/code-highlight",
+                "@mantine/notifications",
+                "@mantine/dates",
+                "dayjs",
+                "@mantine/form",
+                "@mantine/charts",
+                "recharts@2",
+                "@mantine/dropzone"
+            ],
+            "cwd": "$projectDir"
+        },
+        {
+            "action": "cmd",
+            "cmd": "npm",
+            "args": [
+                "install",
+                "--save-dev",
+                "postcss",
+                "postcss-preset-mantine"
+            ],
+            "cwd": "$projectDir"
+        },
+        {
+            "action": "write_raw",
+            "src": [
+                "module.exports = {",
+                "  plugins: {",
+                "    'postcss-preset-mantine': {},",
+                "    'postcss-simple-vars': {",
+                "      variables: {",
+                "        'mantine-breakpoint-xs': '36em',",
+                "        'mantine-breakpoint-sm': '48em',",
+                "        'mantine-breakpoint-md': '62em',",
+                "        'mantine-breakpoint-lg': '75em',",
+                "        'mantine-breakpoint-xl': '88em',",
+                "      },",
+                "    },",
+                "  },",
+                "};"
+            ],
+            "dst": "$projectDir/postcss.config.cjs"
+        },
+        {
+            "action": "write_raw",
+            "src": [
+                "import { StrictMode } from \"react\";",
+                "import { createRoot } from \"react-dom/client\";",
+                "import { MantineProvider } from \"@mantine/core\";",
+                "import { App } from \"./App.tsx\";",
+                "import \"@mantine/core/styles.css\";",
+                "createRoot(document.getElementById(\"root\")!).render(",
+                "  <StrictMode>",
+                "    <MantineProvider>",
+                "      <App />",
+                "    </MantineProvider>",
+                "  </StrictMode>",
+                ");"
+            ],
+            "dst": "$projectDir/src/main.tsx"
+        }
+    ]
+}

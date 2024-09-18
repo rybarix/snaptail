@@ -14,7 +14,7 @@ import { nextTick } from "process";
  * @param {Object} options - Spawn options
  * @returns {Promise<void>}
  */
-async function executeCommand(
+export async function executeCommand(
   command: string,
   args: any[] | readonly string[] | undefined,
   options: object = {}
@@ -305,7 +305,7 @@ const setupWatchForFileChanges = (
   });
 };
 
-const installDependencies = async (
+export const installDependencies = async (
   projectPath: string,
   userFile: PathLike[]
 ) => {

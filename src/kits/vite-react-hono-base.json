@@ -1,0 +1,157 @@
+{
+    "vars": {
+        "$projectDir": ".snaptail",
+        "$tmpName": "snaptail_tmp",
+        "$title": "Vite + React + TS",
+        "$vitePort": "5174"
+    },
+    "steps": [
+        {
+            "action": "cmd",
+            "cmd": "npm",
+            "args": [
+                "create",
+                "vite@5.5.2",
+                "$tmpName",
+                "--",
+                "--template",
+                "react-ts"
+            ],
+            "cwd": "$cwd"
+        },
+        {
+            "action": "mv",
+            "src": "$tmpName",
+            "dst": "$projectDir"
+        },
+        {
+            "action": "rm",
+            "src": [
+                "$projectDir/.git",
+                "$projectDir/README.md",
+                "$projectDir/eslint.config.js",
+                "$projectDir/.gitignore",
+                "$projectDir/public/vite.svg",
+                "$projectDir/src/assets",
+                "$projectDir/src/App.css",
+                "$projectDir/src/App.tsx",
+                "$projectDir/src/index.css",
+                "$projectDir/src/main.tsx"
+            ]
+        },
+        {
+            "action": "write_raw",
+            "src": [
+                "import { StrictMode } from 'react'",
+                "import { createRoot } from 'react-dom/client'",
+                "import { App } from './App.tsx'",
+                "createRoot(document.getElementById('root')!).render(",
+                "  <StrictMode>",
+                "    <App />",
+                "  </StrictMode>,",
+                ")"
+            ],
+            "dst": "$projectDir/src/main.tsx"
+        },
+        {
+            "action": "write_raw",
+            "src": [
+                "import { defineConfig } from 'vite';",
+                "import react from '@vitejs/plugin-react';",
+                "import devServer from '@hono/vite-dev-server';",
+                "export default defineConfig({",
+                "  server: {",
+                "    port: 5174,",
+                "  },",
+                "  base: '$base',",
+                "  plugins: [",
+                "    react(),",
+                "    devServer({",
+                "      entry: './src/hono.ts',",
+                "    }),",
+                "  ],",
+                "});"
+            ],
+            "dst": "$projectDir/vite.config.ts"
+        },
+        {
+            "action": "write_raw",
+            "src": [
+                "export const App = () => <div>Hello world!</div>"
+            ],
+            "dst": "$projectDir/src/App.tsx"
+        },
+        {
+            "action": "write_raw",
+            "src": [
+                "<!doctype html>",
+                "<html lang=\"en\">",
+                "  <head>",
+                "    <meta charset=\"UTF-8\" />",
+                "    <link rel=\"icon\" type=\"image/svg+xml\" href=\"/vite.svg\" />",
+                "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />",
+                "    <title>$title</title>",
+                "    <script type=\"module\">",
+                "      import RefreshRuntime from 'http://localhost:$vitePort/@react-refresh'",
+                "      RefreshRuntime.injectIntoGlobalHook(window)",
+                "      window.$RefreshReg$ = () => {}",
+                "      window.$RefreshSig$ = () => (type) => type",
+                "      window.__vite_plugin_react_preamble_installed__ = true",
+                "    </script>",
+                "  </head>",
+                "  <body>",
+                "    <div id=\"root\"></div>",
+                "    <script type=\"module\" src=\"/src/main.tsx\"></script>",
+                "  </body>",
+                "</html>"
+            ],
+            "dst": "$projectDir/index-hono.html"
+        },
+        {
+            "action": "write_raw",
+            "src": [
+                "import fs from \"node:fs\";",
+                "import path from \"node:path\";",
+                "import { Hono } from \"hono\";",
+                "import { api } from \"../user_api.mjs\";",
+                "import { H } from \"hono/types\";",
+                "type Route = { method: string; path: string; handler: H };",
+                "const createHonoApp = () => { // setup all routes from user_api.mjs",
+                "  const app = new Hono();",
+                "  app.get(\"/\", (c) =>",
+                "    c.html(fs.readFileSync(path.join(\"index-hono.html\"), \"utf8\"))",
+                "  );",
+                "  api.forEach((r: Route) => app.on([r.method], r.path, r.handler));",
+                "  return app;",
+                "};",
+                "const app = createHonoApp();",
+                "export default app;"
+            ],
+            "dst": "$projectDir/src/hono.ts"
+        },
+        {
+            "action": "write_raw",
+            "src": [
+                "{",
+                "    \"compilerOptions\": {",
+                "     \"esModuleInterop\": true,",
+                "      \"jsx\": \"react-jsx\",",
+                "      \"baseUrl\": \"$projectDir/node_modules\", // Base directory for resolving non-relative module names",
+                "      \"typeRoots\": [\"./$projectDir/node_modules/@types\"],",
+                "    }",
+                "}"
+            ],
+            "dst": "$cwd/tsconfig.json"
+        },
+        {
+            "action": "cmd",
+            "cmd": "npm",
+            "args": [
+                "i",
+                "@hono/vite-dev-server@^0.16.0",
+                "hono@4.6.2"
+            ],
+            "cwd": "$projectDir"
+        }
+    ]
+}
