@@ -1,0 +1,139 @@
+{
+    "vars": {
+        "$projectDir": ".snaptail"
+    },
+    "steps": [
+        {
+            "action": "cmd",
+            "cmd": "npm",
+            "args": [
+                "install",
+                "-D",
+                "tailwindcss",
+                "postcss",
+                "autoprefixer"
+            ],
+            "cwd": "$projectDir"
+        },
+        {
+            "action": "cmd",
+            "cmd": "npx",
+            "args": [
+                "tailwindcss",
+                "init",
+                "-p"
+            ],
+            "cwd": "$projectDir"
+        },
+        {
+            "action": "write_raw",
+            "src": [
+                "{",
+                "  \"files\": [],",
+                "  \"references\": [",
+                "    {",
+                "      \"path\": \"./tsconfig.app.json\"",
+                "    },",
+                "    {",
+                "      \"path\": \"./tsconfig.node.json\"",
+                "    }",
+                "  ],",
+                "  \"compilerOptions\": {",
+                "    \"baseUrl\": \".\",",
+                "    \"paths\": {",
+                "      \"@/*\": [\"./src/*\"]",
+                "    }",
+                "  }",
+                "}"
+            ],
+            "dst": "$projectDir/tsconfig.json"
+        },
+        {
+            "action": "write_raw",
+            "src": [
+                "{",
+                "  \"compilerOptions\": {",
+                "    \"target\": \"ES2020\",",
+                "    \"useDefineForClassFields\": true,",
+                "    \"lib\": [\"ES2020\", \"DOM\", \"DOM.Iterable\"],",
+                "    \"module\": \"ESNext\",",
+                "    \"skipLibCheck\": true,",
+                "",
+                "    /* Bundler mode */",
+                "    \"moduleResolution\": \"bundler\",",
+                "    \"allowImportingTsExtensions\": true,",
+                "    \"isolatedModules\": true,",
+                "    \"moduleDetection\": \"force\",",
+                "    \"noEmit\": true,",
+                "    \"jsx\": \"react-jsx\",",
+                "",
+                "    /* Linting */",
+                "    \"strict\": true,",
+                "    \"noUnusedLocals\": true,",
+                "    \"noUnusedParameters\": true,",
+                "    \"noFallthroughCasesInSwitch\": true,",
+                "    ",
+                "    /* shadcn */",
+                "    \"baseUrl\": \".\",",
+                "    \"paths\": {",
+                "      \"@/*\": [",
+                "        \"./src/*\"",
+                "      ]",
+                "    }",
+                "  },",
+                "  \"include\": [\"src\"]",
+                "}"
+            ],
+            "dst": "$projectDir/tsconfig.app.json"
+        },
+        {
+            "action": "cmd",
+            "cmd": "npm",
+            "args": [
+                "install",
+                "-D",
+                "@types/node"
+            ],
+            "cwd": "$projectDir"
+        },
+        {
+            "action": "write_raw",
+            "src": [
+                "import path from \"path\"",
+                "import react from \"@vitejs/plugin-react\"",
+                "import { defineConfig } from \"vite\"",
+                "export default defineConfig({",
+                "  plugins: [react()],",
+                "  resolve: {",
+                "    alias: {",
+                "      \"@\": path.resolve(__dirname, \"./src\"),",
+                "    },",
+                "  },",
+                "})"
+            ],
+            "dst": "$projectDir/vite.config.ts"
+        },
+        {
+            "action": "cmd",
+            "cmd": "npx",
+            "args": [
+                "--yes",
+                "shadcn-ui@latest",
+                "init",
+                "-d"
+            ],
+            "cwd": "$projectDir"
+        },
+        {
+            "action": "cmd",
+            "cmd": "npx",
+            "args": [
+                "--yes",
+                "shadcn-ui@latest",
+                "add",
+                "--all"
+            ],
+            "cwd": "$projectDir"
+        }
+    ]
+}
