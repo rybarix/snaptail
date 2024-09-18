@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "tsc && tsc --watch",
+    "test": "node --test dist/tests/*.spec.js",
     "build": "tsc"
   },
   "keywords": [
